@@ -62,11 +62,12 @@ Definition head_st (t: trace) :=
     end.
 
 Inductive step_node_ev: node_id -> call -> trace -> trace -> Prop :=
-    | SWriteChan (t: trace) s id n han msg s' t:
+    | SWriteChan (t: trace) s id n han msg rhans whans s' t:
         head_st t = Some s ->
         s.(nodes) .[?id] = Some n ->
-        step_node id (WriteChannel han msg) s s' ->
-        step_node_ev id (WriteChannel han msg) t ((s',  n ---> msg) :: t)
+        step_node id (WriteChannel han msg rhans whans) s s' ->
+        step_node_ev id (WriteChannel han msg rhans whans ) t
+            ((s',  n ---> msg) :: t)
     | SReadChan (t: trace) s id n han chan msg s' t:
         head_st t = Some s ->
         s.(nodes) .[?id] = Some n ->

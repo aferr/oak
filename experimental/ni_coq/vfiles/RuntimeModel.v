@@ -23,6 +23,9 @@ Arguments Ensembles.In {U}.
 Arguments Ensembles.Add {U}.
 Arguments Ensembles.Subtract {U}.
 Arguments Ensembles.Singleton {U}.
+Arguments Ensembles.Union {U}.
+Arguments Ensembles.Setminus{U}.
+Arguments Ensembles.Included{U}.
 
 (* Needed for most finite map notation *)
 Open Scope fmap_scope.
@@ -32,29 +35,37 @@ Open Scope fset_scope.
  Commands, State, Etc.
 ============================================================================*)
 Record channel := Chan {
-    clbl: level;
-    ms: list message
+    clbl: level;         (* IFC label of the channel *)
+    ms: list message;    (* list of pending messages in channel *)
+    rhs: Ensemble handle;    (* set of pending read handles in channel *)
+    whs: Ensemble handle;    (* set of pending write handles in channel *)
 }.
 
 (* etachannel just enumerates the fields of the record, as provided
 * by https://github.com/tchajed/coq-record-update *)
 (* When a new field is added to channel, be sure to add it here as well *)
-Instance etachannel : Settable _ := settable! Chan<clbl; ms>.
+Instance etachannel : Settable _ := settable! Chan<clbl; ms; rhs; whs>.
 
 (* ABI Calls *)
 Inductive call: Type :=
-    | WriteChannel (h: handle)(m: message): call
+    | WriteChannel (h: handle)(m: message)
+            (rhs: Ensemble handle)(whs: Ensemble handle): call
+        (* write a message m,
+        * a set of read handles rhs, and 
+        * a set of write handles whs
+        * into the channel pointed to by h unless this would
+        * cause an IFC violation *)
     | ReadChannel (h: handle): call
+        (* read the top message and all the handles from the
+        * channel into the caller, unless this would cause an IFC violation *)
     | CreateChannel (lbl: level): call
+        (* create a new channel with label lbl, unless IFC violation *)
     | CreateNode (lbl: level)(h: handle): call
+        (* create a new node with label lbl, unless IFC violation *)
     | Internal: call. (* this is any action done by the node other than some
                          ABI call, it is "internal" to the node because it does
                          not affect the rest of the system*)
 (* TODO wait_on_channels, channel_close *)
-(*
-TODO need to add field for handles in WriteChannel. When these are read handles
-they should delete the handle from the sender to keep them linear.
-*)
 
 Record node := Node {
     nlbl: level;
@@ -89,9 +100,15 @@ Definition chan_pop (c: channel): channel :=
             | m :: ms' => ms'
         end |>.
 
+Definition chan_clear_hans (c: channel): channel :=
+    c <| rhs := Empty_set handle |> <| whs := Empty_set handle|>.
+
+Definition node_get_hans (n: node)(c: channel): node :=
+    n <| read_handles := (Union n.(read_handles) c.(rhs)) |>
+      <| write_handles := (Union n.(write_handles) c.(whs)) |>.
+
 Definition state_upd_node (nid: node_id)(n: node)(s: state): state :=
     s <| nodes := s.(nodes) .[ nid <- n ] |>.
-
 
 Definition state_upd_chan (h: handle)(ch: channel)(s: state): state :=
     s <| chans := s.(chans) .[ h <- ch ] |>.
@@ -105,11 +122,19 @@ Definition node_add_whan (h: handle)(n: node): node :=
 Definition node_del_rhan (h: handle)(n: node): node :=
     n <| read_handles := Ensembles.Subtract n.(read_handles) h |>.
 
+Definition node_del_rhans (hs: Ensemble handle)(n: node): node :=
+    n <| read_handles := Ensembles.Setminus n.(read_handles) hs |>.
+
 Definition handle_fresh (s: state)(h: handle): Prop :=
     s.(chans) .[?h] = None.
 
 Definition nid_fresh (s: state)(nid: node_id): Prop :=
     s.(nodes) .[?nid] = None.
+
+Definition new_chan (lbl: level): channel :=
+    {| clbl := lbl; ms := []; rhs := Empty_set handle;
+        whs := Empty_set handle; |}.
+
 
 (*============================================================================
 * Single Call Semantics
@@ -122,17 +147,26 @@ but that there is no premise checking that this call is really the one used
 in the relation. This is checked in the global transition relation just below.
 *)
 Inductive step_node: node_id -> call -> state -> state -> Prop :=
-    | SWriteChan s id n han ch msg:
-        s.(nodes) .[?id] = Some n ->
-        In n.(write_handles) han ->
-        s.(chans) .[?han] = Some ch ->
-        (n.(nlbl) <<L ch.(clbl)) ->
-        step_node id (WriteChannel han msg) s
-            (state_upd_chan han (chan_append ch msg) s)
+    | SWriteChan s id n han ch msg rhans whans:
+        s.(nodes) .[?id] = Some n ->    (* caller is a real node *)
+        In n.(write_handles) han ->     (* caller has write handle *)
+        s.(chans) .[?han] = Some ch ->  (* handle points to real channel ch *)
+        (n.(nlbl) <<L ch.(clbl)) ->     (* label of caller flowsTo label of ch*)
+        Included rhans n.(read_handles) ->
+            (* caller has read handles it is sending *)
+        Included whans n.(write_handles) ->
+            (* caller has write handles it is sending *)
+        let ch' := (chan_append ch msg) <|rhs := rhans|> <|whs := whans|> in
+            (* add the sent message and handles to the channel *)
+        let n' := node_del_rhans rhans n in 
+            (* remove the read handles from the sender because read
+            * handles (but not write handles) are linear *)
+        step_node id (WriteChannel han msg rhans whans) s
+            (state_upd_chan han ch' (state_upd_node id n' s))
     | SReadChan s id n han ch:
-        s.(nodes) .[?id] = Some n ->
-        In n.(read_handles) han ->
-        s.(chans) .[?han] = Some ch ->
+        s.(nodes) .[?id] = Some n -> (* caller is a real node *)
+        In n.(read_handles) han ->   (* caller has read handle *)
+        s.(chans) .[?han] = Some ch -> (* handle points to real channel ch *)
             (* A channel read happens only when there is a message
             available in the channel. TODO, re-check what really happens
             when a message is not available, and possibly improve the model.
@@ -140,14 +174,18 @@ Inductive step_node: node_id -> call -> state -> state -> Prop :=
             of the usual one if an error is _not_ thrown.
             *)
         length ch.(ms) > 0 ->
-        ch.(clbl) <<L n.(nlbl) ->
-        step_node id (ReadChannel han) s 
-            (state_upd_chan han (chan_pop ch) s)
+        ch.(clbl) <<L n.(nlbl) -> (* label of caller flowsTo label of ch *)
+        let n' := node_get_hans n ch in
+            (* node gets handles from channel *)
+        let ch' := chan_pop (chan_clear_hans ch) in
+            (* pop the message, clear the read/write handles in ch *)
+        step_node id (ReadChannel han) s
+            (state_upd_chan han ch' (state_upd_node id n' s))
     | SCreateChan s id n h lbl:
         s.(nodes) .[?id] = Some n ->
         n.(nlbl) <<L lbl ->
         handle_fresh s h ->
-            let s0 := (state_upd_chan h {| ms := []; clbl := lbl; |} s) in
+            let s0 := (state_upd_chan h (new_chan lbl) s) in
             let s1 := state_upd_node id (node_add_rhan h n) s0 in
             let s' := state_upd_node id (node_add_whan h n) s1 in
             step_node id (CreateChannel lbl) s s'
