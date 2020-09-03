@@ -26,6 +26,12 @@ Proof.
     destruct p. reflexivity.
 Qed.
 
+
+Theorem no_steps_from_empty: forall t,
+    ~(step_system_ev [] t).
+Proof.
+Admitted. (* WIP *)
+
 Theorem no_steps_to_empty: forall t, 
     ~(step_system_ev_multi t []).
     unfold not. intros.
@@ -33,7 +39,7 @@ Theorem no_steps_to_empty: forall t,
     induction H; subst.
         - (* refl *) inversion H; subst. destruct t'.
             + inversion H2. 
-            + apply t_upd_mono_nil in H0. assumption.
+            + unfold havoc_call in H0. apply t_upd_mono_nil in H0. assumption.
             unfold not. intros. generalize dependent H4. apply nil_cons_rev.
         - apply IHstep_system_ev_multi. reflexivity.
 Qed.

@@ -7,6 +7,9 @@ From OakIFC Require Import
     Events
     LowEquivalences
     TraceTheorems.
+From mathcomp Require Import all_ssreflect finmap.
+From RecordUpdate Require Import RecordSet.
+Import RecordSetNotations.
 
 
 (*
@@ -66,16 +69,75 @@ Definition conjecture_possibilistic_ni := forall ell t1_init t2_init t1n,
         (step_system_ev_multi t2_init t2n) /\
         (trace_low_eq ell t1n t2n)).
 
+Theorem possibilistic_ni_1step_node: forall ell id t1 t2 s1 s2 n1 n2 t1',
+    (head_st t1 = Some s1) ->
+    (head_st t2 = Some s2) ->
+    (s1.(nodes) .[?id] = Some n1) ->
+    (s2.(nodes) .[?id] = Some n2) ->
+    (trace_low_eq ell t1 t2) ->
+    (step_node_ev id (ncall n1) t1 t1') ->
+    (exists t2',
+        (step_node_ev id (ncall n2) t2 t2') /\
+        (trace_low_eq ell t1' t2')).
+Proof.
+Admitted.
+
+Theorem call_havoc_unwind: forall ell id c t1 t2 s1 s2 n1 n2 t1' t2',
+    (trace_low_eq ell t1 t2) ->
+    (head_st t1 = Some s1) ->
+    (head_st t2 = Some s2) ->
+    (* may only need one n *)
+    (s1.(nodes) .[?id] = Some n1) ->
+    (s2.(nodes) .[?id] = Some n2) ->
+    (t1' = havoc_call t1 id c n1 s1) ->
+    (t2' = havoc_call t2 id c n2 s2) ->
+    (trace_low_eq ell t1' t2').
+Proof.
+Admitted.
+ 
 Theorem possibilistic_ni_1step: forall ell t1 t2 t1',
     (trace_low_eq ell t1 t2) ->
     (step_system_ev t1 t1') ->
     (exists t2',
         (step_system_ev t2 t2') /\
         (trace_low_eq ell t1' t2')).
+Proof.
+    intros.
+    inversion H0; subst.
+    rename t' into t1_sn. rename s into s1. rename s' into s1'. rename n into n1.
+    assert (Ht2call: exists s2 n2, 
+        head_st t2 = Some s2 /\ 
+        (nodes s2).[? id] = Some n2). {
+            admit. 
+            (* by low-equivalence of t1 t2 at some ell *)
+            (* no_steps_from_empty *)
+            (* inspection of step_node_ev *)
+        }
+    destruct Ht2call as [s2 [n2 [Ht2s2 Hs2n2]]].
+    assert (Hnode_1step: (exists t2_sn, (step_node_ev id (ncall n2) t2 t2_sn) /\
+        (trace_low_eq ell t1_sn t2_sn)))
+        by (apply (possibilistic_ni_1step_node ell id
+            t1 t2 s1 s2 n1 n2 t1_sn  H1 Ht2s2 H3 Hs2n2 H H5)).
+    destruct Hnode_1step as [t2_sn [Hnstep2 Hnstep_leq]].
+    assert (Hs2': exists s2', head_st t2_sn = Some s2') by admit.
+        (* no steps to empty *)
+    destruct Hs2' as [s2' Hs2']. 
+    remember (havoc_call t2_sn id c' n2 s2') as t2'.
+    exists t2'. split.
+    + subst. (* can step from t2_sn to t2' *)
+        apply (ValidStep id n2 (ncall n2) c' s2 t2 s2' t2_sn);
+            (try assumption; try reflexivity).
+    + (* loq-equiv t1' t2' *)
+        remember (havoc_call t1_sn id c' n1 s1') as t1' eqn:Ht1'.
+        apply (call_havoc_unwind ell id c' t1_sn t2_sn s1' s2' n1 n2
+            t1' t2'); (try assumption; try reflexivity).
+            - admit. (* not true: node is changed, need to get new node *)
+            - admit. (* not true; node is changed, need to get new node *) 
 Admitted. (* NOTE: work in progress *)
 
 
-Theorem possibilistic_ni: conjecture_possibilistic_ni. Proof.
+Theorem possibilistic_ni: conjecture_possibilistic_ni.
+Proof.
 unfold conjecture_possibilistic_ni.
 intros ell t1_init t2_init t1n [Hinit_tleq [Ht1_init [Ht2_init Ht1_mstep_t1n]]].
 remember ([]: trace) as emp eqn:R.
