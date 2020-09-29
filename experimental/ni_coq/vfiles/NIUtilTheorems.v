@@ -16,6 +16,8 @@ Require Import Coq.Classes.RelationClasses.
 
 Local Open Scope map_scope.
 
+Section misc_theorems.
+
 Theorem eq_nodes_have_eq_lbls: forall n1 n2,
     n1 = n2 -> (nlbl n1) = (nlbl n2).
 Proof. congruence. Qed.
@@ -33,9 +35,9 @@ Proof.
     intros. eapply upd_neq. congruence.
 Qed.
 
-(*---------------------------------------------------------------------------*)
-(* Low Projections *)
-(*---------------------------------------------------------------------------*)
+End misc_theorems.
+
+Section low_projection.
 Theorem flows_node_proj: forall ell n,
     (nlbl n <<L ell) ->
     (node_low_proj ell n) = n.
@@ -101,9 +103,9 @@ Proof.
         inversion H0.
 Qed.
 
-(*---------------------------------------------------------------------------*)
-(* Low Equivalences *)
-(*---------------------------------------------------------------------------*)
+End low_projection.
+
+Section low_equivalence.
 Global Instance state_low_eq_refl: forall ell, Reflexive (state_low_eq ell) | 10.
 Proof.
 Admitted. (* WIP *)
@@ -208,12 +210,15 @@ Proof.
             + inversion Ht2head.
 Admitted. (* WIP *)
 
-(*---------------------------------------------------------------------------*)
-(* Unobservable *)
-(*---------------------------------------------------------------------------*)
+End low_equivalence.
+
+Section unobservable.
+
 Theorem set_call_unobs: forall ell s id n c,
     (nodes s).[? id] = Some n ->
     ~(nlbl n <<L ell) ->
     (state_low_eq ell s (s_set_call s id c)).
 Proof.
 Admitted. (* WIP *)
+
+End unobservable.
