@@ -54,6 +54,12 @@ Proof.
     reflexivity.
 Qed.
 
+Theorem flows_chan_proj: forall ell ch,
+    (clbl ch <<L ell) ->
+    (chan_low_proj ell ch) = ch.
+Proof.
+Admitted.
+
 Theorem state_low_proj_idempotent: forall ell s,
     (state_low_proj ell (state_low_proj ell s)) = (state_low_proj ell s).
 Proof.
@@ -62,7 +68,8 @@ Admitted.
 Theorem state_low_proj_loweq: forall ell s,
     (state_low_eq ell (state_low_proj ell s) s).
 Proof.
-Admitted.    
+    intros. unfold state_low_eq. unfold low_eq. eapply state_low_proj_idempotent.
+Qed.
 
 Theorem node_projection_preserves_lbl: forall ell n,
     ((node_low_proj ell n).(nlbl) = n.(nlbl)).
@@ -70,6 +77,18 @@ Proof.
     intros. unfold node_low_proj. destruct (nlbl n <<? ell).
     reflexivity. auto.
 Qed.
+
+Theorem state_nidx_to_proj_state_idx: forall ell s id n,
+    ((nodes s).[? id] = Some n) ->
+    ((nodes (state_low_proj ell s)).[? id] = Some (node_low_proj ell n)).
+Proof.
+Admitted.
+
+Theorem state_hidx_to_proj_state_hidx: forall ell s h ch,
+    ((chans s).[? h] = Some ch) ->
+    ((chans (state_low_proj ell s)).[? h] = Some (chan_low_proj ell ch)).
+Proof.
+Admitted.
 
 Theorem proj_node_state_to_proj_n: forall ell s id n,
     ((nodes (state_low_proj ell s)).[? id] = Some n) ->
@@ -98,6 +117,7 @@ Proof.
         - (* some *) 
         replace n0 with n in *.
         erewrite nflows_node_proj in H0. inversion H0. auto. auto.
+        replace (nodes s id) with ((nodes s).[? id]) in E by auto.
         congruence.
         - (* none *)
         inversion H0.
