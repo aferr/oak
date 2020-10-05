@@ -38,6 +38,8 @@ Qed.
 End misc_theorems.
 
 Section low_projection.
+
+
 Theorem flows_node_proj: forall ell n,
     (nlbl n <<L ell) ->
     (node_low_proj ell n) = n.
@@ -71,6 +73,11 @@ Proof.
     intros. unfold state_low_eq. unfold low_eq. eapply state_low_proj_idempotent.
 Qed.
 
+Theorem chan_low_proj_loweq: forall ell ch,
+    (chan_low_eq ell (chan_low_proj ell ch) ch).
+Proof.
+Admitted.
+
 Theorem node_projection_preserves_lbl: forall ell n,
     ((node_low_proj ell n).(nlbl) = n.(nlbl)).
 Proof.
@@ -78,9 +85,20 @@ Proof.
     reflexivity. auto.
 Qed.
 
+Theorem chan_projection_preserves_lbl: forall ell ch,
+    clbl (chan_low_proj ell ch) = clbl ch.
+Proof.
+Admitted. 
+
 Theorem state_nidx_to_proj_state_idx: forall ell s id n,
     ((nodes s).[? id] = Some n) ->
     ((nodes (state_low_proj ell s)).[? id] = Some (node_low_proj ell n)).
+Proof.
+Admitted.
+
+Theorem state_cidx_to_proj_state_cidx: forall ell s han ch,
+    ((chans s).[? han] = Some ch) ->
+    ((chans (state_low_proj ell s)).[? han] = Some (chan_low_proj ell ch)).
 Proof.
 Admitted.
 
