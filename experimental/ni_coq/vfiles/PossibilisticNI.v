@@ -168,7 +168,13 @@ Proof.
         eapply state_upd_node_unobs; eauto.
         eapply state_chan_append_labeled_unobs; eauto.
     - (* WriteChannel; events loweq*)
-        
+        simpl. Check nflows_labeled_proj.
+        unfold event_low_eq. unfold low_eq.
+        erewrite nflows_labeled_proj.
+        erewrite nflows_labeled_proj.
+        all: eauto.
+    - (* ReadChannel; states loweq *)
+
 Admitted.
 (*
     - (* WriteChannel; states loweq *) 
@@ -239,8 +245,6 @@ Admitted.
     erewrite event_low_proj_idempotent. reflexivity.
 Qed.
 *)
-
-
 
 Theorem step_implies_lowproj_steps_leq: forall ell s1 s1' e1,
     (step_system_ev s1 s1' e1) ->
@@ -345,10 +349,10 @@ Proof.
             eapply set_call_unobs; eauto.
             erewrite node_low_eq_to_lbl_eq; eauto.
             symmetry; eauto.
-            pose proof (state_low_proj_loweq ell s1); congruence.
-            (* events leq *)
-            congruence.
-Qed.
+            admit. (* depends on soon-to-change def of state low-eqs *)
+            pose proof (state_low_proj_loweq ell s1).
+            all: congruence.
+Admitted.
 
 Theorem low_proj_steps_implies_leq_step: forall ell s s1' e1,
     (step_system_ev (state_low_proj ell s) s1' e1) ->
