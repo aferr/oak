@@ -40,7 +40,11 @@ Definition low_proj {A: Type} ell ( labeled_thing: @labeled A) :=
     match labeled_thing with
         | Labeled _ o ell' => if( ell' <<? ell ) 
             then labeled_thing
-            else Labeled A None ell'
+            else Labeled A None top
+                (* Importantly, the label of the secret thing is NOT ell'
+                but instead the top of the information flow lattice 
+                (secret, untrusted) which means the specifc label is 
+                *)
     end.
 
 Definition node_low_proj := @low_proj node.
@@ -49,16 +53,10 @@ Definition event_low_proj := @low_proj event.
 
 
 Definition node_state_low_proj (ell: level)(ns: node_state): node_state :=
-    fun id => 
-        if (ns id).(lbl) <<? ell 
-            then (ns id)
-            else low_proj ell (ns id).
+    fun id => low_proj ell (ns id).
 
 Definition chan_state_low_proj (ell: level)(cs: chan_state): chan_state :=
-    fun h => 
-        if (cs h).(lbl) <<? ell
-            then (cs h)
-            else low_proj ell (cs h).
+    fun h => low_proj ell (cs h).
 
 Definition state_low_proj (ell: level)(s: state): state := {|
     nodes := node_state_low_proj ell s.(nodes);
