@@ -25,10 +25,10 @@ Notation "ell '<--L' lvl":= (Labeled event (Some (LabelReadEv lvl)) ell) (at lev
 Notation "ell '---'":= (Labeled event None ell) (at level 10) : ev_notation.
 Notation "'--' ell '--'" := (Labeled event (Some NCreateEv) ell) (at level 10) : ev_notation.
 
-Notation "item 'DWN' lfrom '|-->' lto '" := 
-        (Labeled down_event (Some DownEv item lfrom lto) lto)
+Notation "item 'DWN' lfrom '|-->' lto" := 
+        (Labeled down_event (Some (DownEv item lfrom lto)) lto)
         (at level 10) : ev_notation.
-Notation "ell 'DWN nil'":= 
+Notation "ell 'DWNnil'":= 
     (Labeled down_event None ell) 
     (at level 10) : ev_notation.
 

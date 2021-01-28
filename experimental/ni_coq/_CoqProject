@@ -15,10 +15,19 @@ vfiles/TraceTheorems.v
 vfiles/Unfold.v
 vfiles/NIUtilTheorems.v
 vfiles/Unwind.v
+
+# noninterference without downgrades
 vfiles/PossibilisticNI_def.v
 vfiles/PossibilisticNI.v
+
+# partially secret labels
 vfiles/RuntimeModelPS.v
 vfiles/LowEqPS.v
 vfiles/LowProjPS_Thms.v
+
+# downgrades
 vfiles/RuntimeModelDwn.v
+vfiles/EvAugSemanticsDwn.v
+vfiles/TraceTheoremsDwn.v
 vfiles/EscapeHatchCondition_def.v
+vfiles/EscapeHatchCondition_proof.v
