@@ -57,6 +57,35 @@ Proof.
     congruence.
 Qed.
 
+
+Theorem unobservable_node_step_down: forall ell s s' e id nl n,
+    s.(nodes).[? id] = nl ->
+    nl.(obj) = Some n ->
+    step_node_ev id n.(ncall) s s' e ->
+    ~(lbl nl <<L ell) ->
+    ~(lbl e <<L ell) ->  (* downgrade events need to be a part of the pre-equivalence*)
+        (* events that are not downgrades will have the same label as the node *)
+    (state_low_eq ell s s') /\ 
+        (event_low_eq ell e (empty_event e.(lbl))). (* this would be cut once events are just downgrades *)
+Proof.
+    intros. inversion H1; (split; [ inversion H6 | ] ); subst_lets; crush; 
+        eauto with unobs_ev. (* handles all event-low-eq cases: *) 
+        all: separate_hyp node; separate_hyp channel.
+    - (* WriteChannel *)
+        assert (~ nlbl0 <<L ell) by congruence.
+        assert ( ~ (lbl (chans s).[? han] <<L ell) ) by eauto using ord_trans.
+        eapply state_low_eq_trans.
+        eapply state_upd_node_unobs; eauto.
+        eapply state_chan_append_labeled_unobs; eauto.
+    - (* WriteChannelDown *) 
+            (* the following uses the precodnition*)
+        assert ( ~ (lbl (chans s).[? han] <<L ell) ) by eauto using ord_trans.
+        eapply state_low_eq_trans.
+        eapply state_upd_node_unobs; eauto.
+        eapply state_chan_append_labeled_unobs; eauto.
+Admitted.
+
+
 Theorem unobservable_node_step: forall ell s s' e id nl n,
     s.(nodes).[? id] = nl ->
     nl.(obj) = Some n ->
@@ -73,6 +102,10 @@ Proof.
         eapply state_low_eq_trans.
         eapply state_upd_node_unobs; eauto.
         eapply state_chan_append_labeled_unobs; eauto.
+    - (* WriteChannelDown state *) 
+        admit. (* doesn't work obviously *)
+    - (* WriteChannelDown event *) 
+        admit. (* doesn't work obviously *)
     - (* ReadChannel *)
         assert (~ nlbl0 <<L ell) by congruence.
         assert ( ~ (clbl <<L ell) ) by eauto using ord_trans.
@@ -100,7 +133,7 @@ Proof.
         eapply state_upd_chan_unobs; eauto.
     - (* ChannelLabelRead *)
         inversion H6. subst. reflexivity.
-Qed.
+Admitted.
 
 Theorem step_implies_lowproj_steps_leq: forall ell s1 s1' e1,
     (step_system_ev s1 s1' e1) ->
@@ -152,9 +185,20 @@ Proof.
                 eapply proj_labels_increase.
                 eauto.
                 (* low-equiv *)
-                subst_lets. 
                 eapply set_call_unwind; eauto.
                 eauto 7 with unwind.
+            + (* WriteChannelDown *) 
+                (* step *)
+                 do 2 eexists; split_ands; [ | | reflexivity ].
+                 rewrite H6 in Hn_idx_s1proj;
+                 pose proof (can_split_node_index _ _ _ _ Hn_idx_s1proj);
+                 logical_simplify.
+                 apply_all_constructors; eauto. congruence.
+                 erewrite state_hidx_to_proj_state_hidx'.
+                 eapply proj_labels_increase. eauto.
+                 (* loweq *)
+                 eapply set_call_unwind; eauto.
+                 eauto 7 with unwind.
             + (* ReadChannel *)
                 do 2 eexists; split_ands; [ | | reflexivity ].
                 (* step *)
@@ -246,6 +290,7 @@ Proof.
                 eauto with unwind.
         * (* not flowsTo case *)
             rename n0 into Hflows.
+            (* proof broken here. need to find another way *)
             pose proof (unobservable_node_step _ _ _ _ _ nl _ ltac:(eauto)
                 ltac:(eauto) H_step_s1_s1' ltac:(eauto))
                 as [Hustep Huev].

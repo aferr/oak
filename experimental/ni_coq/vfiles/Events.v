@@ -11,6 +11,8 @@ Inductive event: Type :=
     | OutEv (m: message): event
     (* note that messages include the bytes and handles sent via channels *)
     | LabelReadEv (l: level): event
+    | DownEvExp {A: Type}(item: A)
+        (lfrom: level)(lto: level): event
     | NCreateEv: event.
 
 Inductive down_event: Type :=
@@ -24,8 +26,11 @@ Notation "ell '<---' msg":= (Labeled event (Some (InEv msg)) ell) (at level 10):
 Notation "ell '<--L' lvl":= (Labeled event (Some (LabelReadEv lvl)) ell) (at level 10): ev_notation.
 Notation "ell '---'":= (Labeled event None ell) (at level 10) : ev_notation.
 Notation "'--' ell '--'" := (Labeled event (Some NCreateEv) ell) (at level 10) : ev_notation.
+Notation "item 'DWNe' lfrom '|-->' lto " := 
+        (Labeled event (Some (DownEvExp item lfrom lto)) lto)
+        (at level 10) : ev_notation.
 
-Notation "item 'DWN' lfrom '|-->' lto '" := 
+Notation "item 'DWN' lfrom '|-->' lto " := 
         (Labeled down_event (Some DownEv item lfrom lto) lto)
         (at level 10) : ev_notation.
 Notation "ell 'DWN nil'":= 

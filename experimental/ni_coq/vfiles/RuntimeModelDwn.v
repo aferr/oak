@@ -63,12 +63,11 @@ Inductive step_node (id: node_id): call -> state -> state -> Prop :=
         step_node id (WriteChannel han msg) s 
             (state_chan_append_labeled han msg (state_upd_node id n' s))
     | SWriteChanDwn s n nlbl han clbl msg ell':
+        (* Same as write channel, but there is no flowsTo check
+        because instead this does a downgrade *)
         (s.(nodes).[? id]) = Labeled node (Some n) nlbl ->
             (* caller is a real node with label nlbl *)
         (s.(chans).[? han]).(lbl) = clbl ->
-            (* the handle has label clbl, though the call does not
-            check whether or not a channel is allocated to the handle
-            to avoid leaks (it can be Some or None) *)
         In n.(write_handles) han ->     (* caller has write handle *)
         Included msg.(rhs) n.(read_handles) ->
             (* caller has read handles it is sending *)

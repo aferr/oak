@@ -66,6 +66,10 @@ Inductive step_node_ev (id: node_id): call -> state -> state -> event_l -> Prop 
         step_node_ev id (WriteChannel han msg) s s' (nlbl ---> msg)
         (* The notations used for events on this last line and others
         is in Events.v *)
+    | SWriteChanDwnEv s nlbl han msg s' ell':
+        (s.(nodes) .[?id]).(lbl) = nlbl ->
+        step_node id (WriteChannelDown han msg ell') s s' ->
+        step_node_ev id (WriteChannelDown han msg ell') s s' (msg DWNe nlbl |--> ell')
     | SReadChanEv s nlbl han chan msg s':
         (s.(nodes) .[?id]).(lbl) = nlbl ->
         step_node id (ReadChannel han) s s' ->

@@ -62,6 +62,20 @@ Inductive step_node (id: node_id): call -> state -> state -> Prop :=
             validity, but only append the message if *)
         step_node id (WriteChannel han msg) s 
             (state_chan_append_labeled han msg (state_upd_node id n' s))
+    | SWriteChanDwn s n nlbl han clbl msg ell':
+            (* Same as write channel, but the flowsTo check uses
+            ell' (the label of the deliberate downgrade) instead of
+            the label of the node *)
+            (s.(nodes).[? id]) = Labeled node (Some n) nlbl ->
+            (s.(chans).[? han]).(lbl) = clbl ->
+            In n.(write_handles) han ->     (* caller has write handle *)
+            ell' <<L clbl -> (* label of downgrade flows to label of channel *)
+            Included msg.(rhs) n.(read_handles) ->
+            Included msg.(whs) n.(write_handles) ->
+            let n' := node_del_rhans msg.(rhs) n in 
+            let s0 := state_upd_node id n' s in
+            step_node id (WriteChannelDown han msg ell') s 
+                (state_chan_append_labeled han msg (state_upd_node id n' s))
     | SReadChan s n nlbl han ch clbl msg:
         (s.(nodes).[?id]) = Labeled node (Some n) nlbl ->
             (* caller is a real node with label nlbl *)
