@@ -1,0 +1,58 @@
+#include "labelChecking.dl"
+
+bindModule("p",
+    $FlatMod(
+        $Cons("a", $Cons("b", $Nil())),
+        $Cons("c", $Nil())
+    )
+).
+
+labelEnvironment("a", "alice").
+labelEnvironment("b", "bot").
+labelEnvironment("c", "bot").
+
+// Module "p" should not label-check because there is a flow from alice's data to bot=public.
+
+//-----------------------------------------------------------------------------
+// This illustrates an auditor writing some library code to support using
+// "no_edge" annotations. The library maps these into downgrades.
+.decl saysNoEdge(auditor: label, p: moduleName,
+    l1: locationName, l2: locationName)
+
+saysDowngrades(speaker, mod, loc, newLabel) :-
+    groundedLocation(loc),
+    saysNoEdge(speaker, mod, _, l2),
+    // I think this does mean that the surface policy language would need to
+    // have a way to get the label for a location, which could in general
+    // be inferred by DFA
+    labelEnvironment(l2, newLabel).
+//-----------------------------------------------------------------------------
+
+bindModule("q",
+    $FlatMod(
+        $Cons("x", $Cons("y", $Nil())),
+        $Cons("z", $Nil())
+    )
+).
+
+labelEnvironment("x", "alice").
+labelEnvironment("y", "bot").
+labelEnvironment("z", "bot").
+
+isLabel("someAuditor").  // just a declaration
+saysNoEdge("someAuditor", "q", "x", "z"). // annotation added by auditor
+
+// For this to work, there needs to be a delegation from alice to the auditor.
+// Here's the simplest way that could happen:
+saysCanSayDowngrades("alice", "someAuditor", anyModule, anyLoc, anyNewLabel) :- 
+    groundedModuleName(anyModule),
+    groundedLocation(anyLoc),
+    isLabel(anyNewLabel).
+
+// "q" should labelCheck
+
+.output flowsTo
+.output bindModule
+.output labelEnvironment
+.output saysDowngrades
+.output moduleLabelChecks 
