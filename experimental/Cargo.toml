@@ -8,6 +8,9 @@ members = [
   "attestation_common",
   "proxy_attestation",
 ]
+exclude = [
+    "try-antlr4-rust",
+]
 
 [patch.crates-io]
 # Oak.
