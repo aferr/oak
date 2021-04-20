@@ -8,6 +8,10 @@ members = [
   "attestation_common",
   "proxy_attestation",
 ]
+exclude = [
+  "auth-logic-prototype",
+]
+
 
 [patch.crates-io]
 # Oak.
